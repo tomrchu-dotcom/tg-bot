@@ -11,8 +11,16 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # 設定 Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
-
+# 這裡換成最新的 1.5 版本，並關閉所有過濾器
+model = genai.GenerativeModel(
+    model_name='gemini-1.5-flash',
+    safety_settings=[
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+)
 def send_message(chat_id, text):
     """傳送訊息給 Telegram 使用者的函式"""
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
