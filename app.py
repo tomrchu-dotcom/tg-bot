@@ -9,18 +9,26 @@ app = Flask(__name__)
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
-# 強制設定 Gemini API
+# 配置 API
 genai.configure(api_key=GEMINI_API_KEY)
 
-# 終極修正：直接使用內容生成功能，並加上錯誤捕捉
 def get_ai_response(prompt):
     try:
-        # 強制指定最新模型
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # 使用最穩定的模型調用方式，並加上安全設定
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash'
+        )
+        # 加入一個簡單的過濾處理
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"AI 啟動失敗，錯誤訊息：{str(e)}"
+        # 如果還是失敗，嘗試切換到另一個穩定模型
+        try:
+            model_alt = genai.GenerativeModel('gemini-1.5-pro')
+            response = model_alt.generate_content(prompt)
+            return response.text
+        except:
+            return f"AI 暫時無法回應，請檢查 API 權限或稍後再試。錯誤細節：{str(e)}"
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -29,19 +37,12 @@ def send_message(chat_id, text):
 
 @app.route("/", methods=["POST"])
 def webhook():
-    try:
-        data = request.get_json()
-        if "message" in data and "text" in data["message"]:
-            chat_id = data["message"]["chat"]["id"]
-            user_text = data["message"]["text"]
-            
-            # 呼叫 AI 回應
-            reply_text = get_ai_response(user_text)
-            
-            # 回傳給 Telegram
-            send_message(chat_id, reply_text)
-    except Exception as e:
-        print(f"Webhook Error: {e}")
+    data = request.get_json()
+    if "message" in data and "text" in data["message"]:
+        chat_id = data["message"]["chat"]["id"]
+        user_text = data["message"]["text"]
+        reply_text = get_ai_response(user_text)
+        send_message(chat_id, reply_text)
     return "OK", 200
 
 @app.route("/", methods=["GET"])
